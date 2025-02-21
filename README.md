@@ -1,3 +1,5 @@
+
+
 1. Run the flask application
 2. method test generate eda - perform the exploratory data analysis to understand clean and prepare the data before building models
 3. Using stratified data split to choose the dataset for the model training with the split of training of 80% , validation 10% and testing 10%
@@ -6,8 +8,8 @@
 6. Predict function - loads the saved model and performs the prediction
 7. Bert model has the limitation of handling tokens more than 512 tokens , I have solved the problem with sliding window approach for bert tokenization and performed the model training if the word token length is more than 512
 
-Note: please refer the jupyter notebook - Feb20_rgrid to refer the complete ml development implementation.
-
+**Note: please refer the jupyter notebook - Feb20_rgrid_notebook.ipynb to refer the complete ml development implementation.
+**
 
 
  
