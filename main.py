@@ -337,6 +337,34 @@ def train():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+def sliding_window_tokenization(text, tokenizer, max_length=512, stride=256):
+    """
+    Tokenizes text using a sliding window approach to handle texts longer than max_length.
+    
+    Parameters:
+    - text (str): The input text.
+    - tokenizer: Hugging Face tokenizer.
+    - max_length (int): Maximum token length for BERT.
+    - stride (int): Overlapping stride size.
+
+    Returns:
+    - List of tokenized chunks.
+    """
+    tokens = tokenizer.encode(text, add_special_tokens=True)
+
+    # If text is within limits, return as a single chunk
+    if len(tokens) <= max_length:
+        return [tokens]
+
+    # Otherwise, split using sliding window
+    chunks = []
+    for i in range(0, len(tokens), stride):
+        chunk = tokens[i : i + max_length]
+        if len(chunk) < max_length:
+            break  # Stop if the chunk is too small
+        chunks.append(chunk)
+    
+    return chunks
 
 # Define the TextDataset class
 class TextDataset(torch.utils.data.Dataset):
@@ -390,11 +418,50 @@ def predict(description: str) -> LABELS:
     return predicted_class
     # raise NotImplementedError()
 
+def predict_text(description: str,max_length=512, stride=256):
+    """
+    Predicts sentiment/class for a given text using a trained BERT model.
+    
+    - Uses sliding window approach if text exceeds 512 tokens.
+    """
+    # Tokenize input text
+     # Reload the trained model from the checkpoint
+    model = BertForSequenceClassification.from_pretrained("saved_model")
+    tokenizer = BertTokenizer.from_pretrained("saved_model")
+    trainer = Trainer(model=model, tokenizer=tokenizer)
+    print(" work work work ")
+    print(description)
+    text = description
+    tokenized_chunks = sliding_window_tokenization(text, tokenizer, max_length, stride)
+
+    # Convert chunks into dataset
+    chunk_datasets = []
+    for chunk in tokenized_chunks:
+        encodings = tokenizer.pad({"input_ids": [chunk]}, return_tensors="pt", padding=True)
+        chunk_datasets.append(TextDataset(encodings))
+
+    print(chunk_datasets)
+    # Predict for each chunk and take majority vote
+    predictions = []
+    for dataset in chunk_datasets:
+        output = trainer.predict(dataset)
+        pred_label = torch.argmax(torch.tensor(output.predictions), dim=1).item()
+        predictions.append(pred_label)
+
+    # Return the most frequent predicted label
+    final_prediction = max(set(predictions), key=predictions.count)
+    print(final_prediction)
+    predicted_class = label_mapping.get(final_prediction, "Unknown")
+    print(f"Predicted class: {predicted_class}")   
+    return predicted_class
+
 @app.route("/predict", methods=["POST"])
 def identify_condition():
     data = request.get_json(force=True)
 
-    prediction = predict(data["description"])
+    # prediction = predict(data["description"])
+
+    prediction = predict_text(data["description"])
 
     return jsonify({"prediction": prediction})
 
