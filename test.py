@@ -1,13 +1,6 @@
 import json
 import requests
-import numpy as np
-import pandas as pd
-from ydata_profiling import ProfileReport
-import nltk
-from nltk.tokenize import word_tokenize
 
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 
 BASE_URL = "http://127.0.0.1:5000/"
 
@@ -64,6 +57,6 @@ def test_train():
 
     
 if __name__ == "__main__":
-    # test_predict()
-    #test_generate_eda()
-    test_train()
+    test_predict()
+    # test_generate_eda()
+    #test_train()
