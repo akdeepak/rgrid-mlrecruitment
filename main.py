@@ -418,7 +418,7 @@ def predict(description: str) -> LABELS:
     return predicted_class
     # raise NotImplementedError()
 
-def predict_text(description: str,max_length=512, stride=256):
+def predict_sliding_window(description: str,max_length=512, stride=256):
     """
     Predicts sentiment/class for a given text using a trained BERT model.
     
@@ -461,7 +461,7 @@ def identify_condition():
 
     # prediction = predict(data["description"])
 
-    prediction = predict_text(data["description"])
+    prediction = predict_sliding_window(data["description"])
 
     return jsonify({"prediction": prediction})
 
