@@ -39,6 +39,19 @@ class TextDataset(torch.utils.data.Dataset):
         encoding = {key: value.squeeze(0) for key, value in encoding.items()}
         return encoding
 
+# class TextDataset(torch.utils.data.Dataset):
+    def __init__(self, encodings, labels):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
+        item["labels"] = torch.tensor(self.labels.iloc[idx])
+        return item
+
 LABELS = Literal[
     "Dementia",
     "ALS",
@@ -121,7 +134,7 @@ def generate_eda_report(file_name: str) -> str:
     return output_html
 
 
-def predict(description: str) -> LABELS:
+def predict_bkp(description: str) -> LABELS:
     """
     Function that should take in the description text and return the prediction
     for the class that we identify it to.
@@ -136,9 +149,10 @@ def predict(description: str) -> LABELS:
     trainer = Trainer(model=model, tokenizer=tokenizer)
 
     print(description)
-    test_texts = description
- 
-    prediction_dataset = TextDataset([description], tokenizer)
+    test_text = description
+    test_encoding = tokenizer(test_text, truncation=True, padding=True, return_tensors="pt")
+
+    # prediction_dataset = TextDataset(description, tokenizer)
      # Make predictions
     predictions, label_ids, metrics = trainer.predict(prediction_dataset)
 
@@ -153,21 +167,21 @@ def predict(description: str) -> LABELS:
     # raise NotImplementedError()
 
 
-class TextDataset(torch.utils.data.Dataset):
-    """
-    Custom PyTorch dataset for tokenized text data.
-    """
-    def __init__(self, encodings, labels):
-        self.encodings = encodings
-        self.labels = labels
+# class TextDataset(torch.utils.data.Dataset):
+#     """
+#     Custom PyTorch dataset for tokenized text data.
+#     """
+#     def __init__(self, encodings, labels):
+#         self.encodings = encodings
+#         self.labels = labels
 
-    def __len__(self):
-        return len(self.labels)
+#     def __len__(self):
+#         return len(self.labels)
 
-    def __getitem__(self, idx):
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item["labels"] = torch.tensor(self.labels.iloc[idx])
-        return item
+#     def __getitem__(self, idx):
+#         item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
+#         item["labels"] = torch.tensor(self.labels.iloc[idx])
+#         return item
 
 def compute_metrics(eval_pred):
     """
@@ -270,15 +284,6 @@ def hello_world():
     return "Hello, World!"
 
 
-@app.route("/predict", methods=["POST"])
-def identify_condition():
-    data = request.get_json(force=True)
-
-    prediction = predict(data["description"])
-
-    return jsonify({"prediction": prediction})
-
-
 @app.route('/generate_eda', methods=['POST'])
 def generate_eda():
     """
@@ -332,6 +337,67 @@ def train():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+# Define the TextDataset class
+class TextDataset(torch.utils.data.Dataset):
+    def __init__(self, encodings, labels=None):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.encodings["input_ids"])
+
+    def __getitem__(self, idx):
+        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
+        if self.labels is not None:
+            item["labels"] = torch.tensor(self.labels.iloc[idx])
+        return item
+def predict(description: str) -> LABELS:
+    """
+    Function that should take in the description text and return the prediction
+    for the class that we identify it to.
+    The possible classes are: ['Dementia', 'ALS',
+                                'Obsessive Compulsive Disorder',
+                                'Scoliosis', 'Parkinson’s Disease']
+    """
+
+    # Reload the trained model from the checkpoint
+    model = BertForSequenceClassification.from_pretrained("saved_model")
+    tokenizer = BertTokenizer.from_pretrained("saved_model")
+    trainer = Trainer(model=model, tokenizer=tokenizer)
+    print(" work work work ")
+    print(description)
+    text = description
+    encoding = tokenizer([text], padding=True, truncation=True, max_length=512, return_tensors="pt")
+    
+    # Create a dataset without labels
+    dataset = TextDataset(encoding)  # No labels during prediction
+    
+    # Predict using Trainer
+    predictions, label_ids, metrics = trainer.predict(dataset)
+    print(predictions)
+    # prediction_dataset = TextDataset(description, tokenizer)
+     # Make predictions
+    # predictions, label_ids, metrics = trainer.predict(prediction_dataset)
+
+    # Convert logits to predicted class labels (by taking argmax)
+    predicted_labels = np.argmax(predictions)
+    # Print the predicted labels
+    print(f"Predicted Labels: {predicted_labels}")
+    # Convert index back to class label
+    predicted_class = label_mapping.get(predicted_labels, "Unknown")
+    print(f"Predicted class: {predicted_class}")   
+    return predicted_class
+    # raise NotImplementedError()
+
+@app.route("/predict", methods=["POST"])
+def identify_condition():
+    data = request.get_json(force=True)
+
+    prediction = predict(data["description"])
+
+    return jsonify({"prediction": prediction})
+
 if __name__ == "__main__":
     app.run(debug=True)
 
@@ -351,3 +417,5 @@ def eda():
     profile = ProfileReport(df, title="Research Grid EDA data exploration", explorative=True)
     # Save the profile report to an HTML file
     profile.to_file("trials_eda.html")
+
+
