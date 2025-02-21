@@ -1,4 +1,4 @@
-
+**Note: please refer the jupyter notebook - Feb20_rgrid_notebook.ipynb to refer the complete ml development implementation. **
 
 1. Run the flask application
 2. method test generate eda - perform the exploratory data analysis to understand clean and prepare the data before building models
